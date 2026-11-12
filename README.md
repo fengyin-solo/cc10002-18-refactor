@@ -11,13 +11,15 @@
 .
 ├── frontend/                 React + Vite + TypeScript 前端
 │   ├── src/views/            每个业务模块一个页面
-│   ├── src/api/              统一请求封装
+│   ├── src/api/              统一请求封装与字段契约镜像
 │   ├── src/stores/           会话与筛选状态
 │   └── vite.config.ts        dev server 配置（open: false）
 ├── backend/                  FastAPI（Python） 后端
 │   ├── app/routers/          每个业务模块一组接口
 │   ├── app/services/         业务规则与状态流转
+│   ├── app/contracts/        字段契约：声明、编译器、注册表与前端代码生成
 │   └── app/store.py          内存数据仓库与示例数据
+├── tests/                    契约编译、装载边界与 HTTP 行为回归
 ├── .gitignore
 └── docker-compose.yml
 ```
@@ -70,10 +72,30 @@ npm run dev
 
 ## 约定
 
-- 每个模块的前端页面在 `frontend/src/views/<模块>/index.vue`，后端接口在
+- 每个模块的前端页面在 `frontend/src/views/<模块>/index.tsx`，后端接口在
   `backend/app/routers/<模块>.py`，业务规则在 `backend/app/services/<模块>.py`。
 - 列表接口统一返回 `{ items, total, page, size }`，动作接口统一返回 `{ ok, message }`。
 - 状态流转只允许在 `app/services` 里改，路由层不做业务判断。
+
+## 字段契约（维度管理 / 数据建模）
+
+这两个实体的字段描述有唯一所有者，路由、服务、Pydantic 明细类与前端都只消费契约，
+不再各自抄写中文键、列定义或必填集合。
+
+- 单一所有者：`backend/app/contracts/declarations.py`。每个字段在此一次性声明
+  中文存储键（`storage_key`，历史落库/接口数据里的真实键）、显示含义（`label`）、
+  是否必填（`required`）与旧说明模型属性序号（`field_index`）。
+- 编译与装载：`compiler.py` 把声明整体编译成不可变快照，发现「多描述指向同一旧键」
+  「同名描述含义冲突」等问题会汇总报错、拒绝发布半成品；`registry.py` 保证原子发布，
+  重新编译失败时保留原完整契约，读者持有的快照始终稳定。
+- `field_数字` 只是 Pydantic 明细类（说明模型）的属性名，由契约按 `field_index`
+  生成，绝不作为存储键，登记与读取始终使用中文存储键；未知中文键和额外属性原样透传。
+- 前端镜像：`frontend/src/api/fieldContractData.ts` 由
+  `python -m app.contracts.codegen_ts`（在 `backend` 目录执行）从同一份声明生成，
+  `fieldContracts.ts` 负责编译冻结。改字段只改后端声明并重新生成，手工改镜像会被
+  `tests/test_frontend_mirror.py` 的逐字节比对拦下。
+- 回归测试：`python -m pytest tests` 覆盖真实请求前后对照、冲突显式上报、初始化失败
+  保留旧契约与并发只发布一份完整版本等兼容性场景。
 
 领域：数据工程
 子方向：数据分析与数据应用

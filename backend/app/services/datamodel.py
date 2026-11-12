@@ -1,12 +1,22 @@
-"""数据建模业务规则：状态流转、字段校验与筛选口径都收在这里。"""
+"""数据建模业务规则：状态流转、字段校验与筛选口径都收在这里。
+
+字段口径不再本地抄写：中文存储键、必填集合与检索字段均消费字段契约的只读快照，
+本服务只负责业务规则。契约未声明的历史键/额外属性不经手、不过滤，由仓库原样保留。
+"""
 from __future__ import annotations
 
 from typing import Any
 
+from app.contracts import load_contracts
 from app.store import store
 
 MODULE = "datamodel"
-REQUIRED_FIELDS = ["模型编号", "模型名称", "事实表名"]
+CONTRACT = load_contracts().get(MODULE)
+
+# 兼容历史模块级常量的派生别名：值来自契约，不再是第二份手写描述。
+REQUIRED_FIELDS = list(CONTRACT.required_storage_keys)
+KEYWORD_FIELD = CONTRACT.keyword_storage_key
+
 STATUS_ORDER = ["草稿", "待审核", "已生效", "已废弃"]
 ACTION_RULES = {"提交审核": "待审核", "生效发布": "已生效", "废弃下线": "已废弃"}
 NEGATIVE_ACTIONS = []
@@ -23,7 +33,7 @@ class DatamodelService:
     ) -> tuple[list[dict[str, Any]], int]:
         rows = store.rows(MODULE)
         if keyword:
-            rows = [row for row in rows if keyword in str(row.get("模型编号", ""))]
+            rows = [row for row in rows if keyword in str(row.get(KEYWORD_FIELD, ""))]
         if status:
             rows = [row for row in rows if row.get("status") == status]
         total = len(rows)
@@ -34,12 +44,15 @@ class DatamodelService:
         return store.find(MODULE, entry_id)
 
     def create_entry(self, values: dict[str, Any]) -> tuple[dict[str, Any] | None, list[str]]:
-        missing = [field for field in REQUIRED_FIELDS if not str(values.get(field) or "").strip()]
+        # 只按契约声明的必填中文存储键校验并保存；field_数字、未接入的可选字段
+        # 以及任何未知键都不会进入登记结果。
+        required_fields = CONTRACT.required_storage_keys
+        missing = [field for field in required_fields if not str(values.get(field) or "").strip()]
         if missing:
             return None, missing
         rows = store.rows(MODULE)
         entry = {"id": max((int(row.get("id", 0)) for row in rows), default=0) + 1}
-        entry.update({field: values.get(field) for field in REQUIRED_FIELDS})
+        entry.update({field: values.get(field) for field in required_fields})
         entry["status"] = STATUS_ORDER[0]
         entry["pending"] = True
         entry["abnormal"] = False

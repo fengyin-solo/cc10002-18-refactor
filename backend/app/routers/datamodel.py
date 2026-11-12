@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+from app.contracts import load_contracts
 from app.schemas import ActionResult, EntryPayload, PageResult
 from app.services.datamodel import DatamodelService
 
@@ -12,7 +13,9 @@ router = APIRouter(prefix="/api/datamodel", tags=["数据建模"])
 
 service = DatamodelService()
 
-LIST_FIELDS = ["模型编号", "模型名称", "事实表名", "关联维度", "度量列定义", "分区字段", "增量键", "刷新周期"]
+# 展示列由字段契约的中文存储键派生（历史上这里是手写的 LIST_FIELDS），
+# 路由层不再自行维护字段描述；常量名保留以兼容既有引用。
+LIST_FIELDS = list(load_contracts().get("datamodel").storage_keys)
 STATUSES = ["草稿", "待审核", "已生效", "已废弃"]
 
 

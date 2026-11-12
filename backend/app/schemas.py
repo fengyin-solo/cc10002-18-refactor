@@ -1,9 +1,15 @@
-"""接口出入参模型：列表分页、动作结果与各模块的明细结构。"""
+"""接口出入参模型：列表分页、动作结果与各模块的明细结构。
+
+维度管理与数据建模的明细类不再手写：``field_数字`` 属性由字段契约编译生成，
+属性名只是说明模型的兼容形态，存储与接口数据始终使用契约里的中文存储键。
+"""
 from __future__ import annotations
 
 from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, Field
+
+from app.contracts import load_contracts
 
 T = TypeVar("T")
 
@@ -41,17 +47,13 @@ class MetricdefEntry(BaseModel):
     field_6: str | None = None  # 精度位数
     field_7: str | None = None  # 口径版本
 
-class DimensionEntry(BaseModel):
-    """分析维度明细结构。"""
+# 维度管理 / 数据建模的明细结构改由字段契约统一编译，保留同名导出以兼容
+# ``from app.schemas import DimensionEntry`` 这类既有引用。field_数字仅是说明
+# 模型属性，对应契约中的 field_index，绝不作为存储键写回业务数据。
+_contract_snapshot = load_contracts()
+DimensionEntry = _contract_snapshot.entry_model("dimension")
+DatamodelEntry = _contract_snapshot.entry_model("datamodel")
 
-    field_0: str | None = None  # 维度编号
-    field_1: str | None = None  # 维度名称
-    field_2: str | None = None  # 数据来源表
-    field_3: str | None = None  # 维度键列
-    field_4: str | None = None  # 层级关系
-    field_5: str | None = None  # 历史拉链策略
-    field_6: str | None = None  # 刷新周期
-    field_7: str | None = None  # 默认取值
 
 class DatasourceEntry(BaseModel):
     """数据源配置明细结构。"""
@@ -184,18 +186,6 @@ class QualityEntry(BaseModel):
     field_5: str | None = None  # 阈值上界
     field_6: str | None = None  # 采样比例
     field_7: str | None = None  # 阻断级别
-
-class DatamodelEntry(BaseModel):
-    """模型定义明细结构。"""
-
-    field_0: str | None = None  # 模型编号
-    field_1: str | None = None  # 模型名称
-    field_2: str | None = None  # 事实表名
-    field_3: str | None = None  # 关联维度
-    field_4: str | None = None  # 度量列定义
-    field_5: str | None = None  # 分区字段
-    field_6: str | None = None  # 增量键
-    field_7: str | None = None  # 刷新周期
 
 class ExportEntry(BaseModel):
     """导出任务明细结构。"""

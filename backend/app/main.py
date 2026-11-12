@@ -9,8 +9,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.contracts import load_contracts
 from app.routers import ROUTERS
 from app.store import store
+
+# 应用启动前先整体装载字段契约：编译失败会在此处直接中断，服务不会带着
+# 半新半旧的字段描述对外提供。
+load_contracts()
 
 app = FastAPI(title="数据指标分析平台", version="1.0.0")
 

@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+from app.contracts import load_contracts
 from app.schemas import ActionResult, EntryPayload, PageResult
 from app.services.dimension import DimensionService
 
@@ -12,7 +13,9 @@ router = APIRouter(prefix="/api/dimension", tags=["维度管理"])
 
 service = DimensionService()
 
-LIST_FIELDS = ["维度编号", "维度名称", "数据来源表", "维度键列", "层级关系", "历史拉链策略", "刷新周期", "默认取值"]
+# 展示列由字段契约的中文存储键派生（历史上这里是手写的 LIST_FIELDS），
+# 路由层不再自行维护字段描述；常量名保留以兼容既有引用。
+LIST_FIELDS = list(load_contracts().get("dimension").storage_keys)
 STATUSES = ["草稿", "待审核", "已生效", "已废弃"]
 
 

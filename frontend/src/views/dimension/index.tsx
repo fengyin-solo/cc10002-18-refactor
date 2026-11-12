@@ -1,18 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { request } from '@/api/client'
+import { fieldContracts } from '@/api/fieldContracts'
 
 const ENDPOINT = '/api/dimension'
-const columns = [
-  "维度编号",
-  "维度名称",
-  "数据来源表",
-  "维度键列",
-  "层级关系",
-  "历史拉链策略",
-  "刷新周期",
-  "默认取值"
-]
+// 列定义不再在页面内抄写：展示列与字段含义统一消费字段契约的只读快照。
+const dimensionContract = fieldContracts.dimension
+const columns = dimensionContract.storageKeys
 const actions = [
   "提交审核",
   "生效启用",
@@ -113,7 +107,7 @@ export default function DimensionView() {
       <form className="filter-bar" onSubmit={(event) => { event.preventDefault(); void reload() }}>
         {filterFields.map((field) => (
           <label key={field} className="filter-item">
-            <span>{field}</span>
+            <span>{dimensionContract.labelFor(field)}</span>
             <input
               value={filters[field] ?? ''}
               placeholder={`按${field}检索`}
@@ -128,7 +122,7 @@ export default function DimensionView() {
       <table className="data-table">
         <thead>
           <tr>
-            {columns.map((column) => <th key={column}>{column}</th>)}
+            {columns.map((column) => <th key={column}>{dimensionContract.labelFor(column)}</th>)}
             <th>可执行动作</th>
           </tr>
         </thead>
